@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<ruleset name="controlling">
+    <description>The controlling coding standard.</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <!--arg name="report" value="summary"/-->
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="BrainbitsCodingStandard"/>
+    <!--rule ref="SlevomatCodingStandard.Functions.TrailingCommaInCall" /-->
+</ruleset>

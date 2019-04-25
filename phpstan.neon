@@ -1,0 +1,15 @@
+parameters:
+    level: 1
+    memory_limit: 512M
+    paths:
+        - src
+        - tests
+    classesAllowedToBeExtended:
+        - InvalidArgumentException
+
+includes:
+    #- vendor/jangregor/phpstan-prophecy/src/extension.neon
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+    - vendor/thecodingmachine/phpstan-safe-rule/phpstan-safe-rule.neon
+
