@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace MapperTests\Integration;
 
-use Mapper\Constraint\IsArrayIndexNotEmpty;
-use Mapper\Mapper;
-use Mapper\Modifier\Put;
-use Mapper\Modifier\Remove;
-use Mapper\Value\Collection;
-use Mapper\Value\Join;
-use Mapper\Value\Left;
-use Mapper\Value\Pick;
-use Mapper\Value\Right;
 use PHPUnit\Framework\TestCase;
+use function Mapper\always;
+use function Mapper\arr;
+use function Mapper\compose;
+use function Mapper\converge;
+use function Mapper\drop;
+use function Mapper\ifElse;
+use function Mapper\isEmpty;
+use function Mapper\join;
+use function Mapper\merge;
+use function Mapper\omit;
+use function Mapper\pipe;
+use function Mapper\prop;
+use function Mapper\take;
 
 final class ComplexTest extends TestCase
 {
@@ -32,82 +36,73 @@ final class ComplexTest extends TestCase
             'creation_date_time' => '1700-01-01 10:11:12.000',
         ];
 
-        $mapper = new Mapper(
-            new Put(
-                'contact',
-                new Collection([
-                    'id' => new Pick('contact_id'),
-                    'name' => new Pick('contact_name'),
-                ])
-            ),
-            new Put(
-                'unloading_point',
-                new Collection([
-                    'code' => new Pick('unloading_point_code'),
-                    'description' => new Pick('unloading_point_description'),
-                ])
-            ),
-            new Put(
-                'invalid',
-                new Collection([
-                    'id' => new Pick('invalid_id'),
-                    'value' => new Pick('invalid_value'),
+        $remap = converge(
+            merge(),
+            [
+                arr([
+                    'contact' => arr([
+                        'id' => prop('contact_id'),
+                        'name' => prop('contact_name'),
+                    ]),
+                    'unloading_point' => ifElse(
+                        compose(isEmpty(), prop('unloading_point_code')),
+                        null,
+                        arr([
+                            'code' => prop('unloading_point_code'),
+                            'description' => prop('unloading_point_description'),
+                        ]),
+                    ),
+                    'creation_date' => converge(
+                        join(' '),
+                        [
+                            pipe(prop('creation_date_date'), take(10)),
+                            pipe(prop('creation_date_time'), drop(11)),
+                        ]
+                    ),
+                    'invalid' => ifElse(
+                        compose(isEmpty(), prop('invalid_id')),
+                        null,
+                        arr([
+                            'id' => prop('invalid_id'),
+                            'value' => prop('invalid_value'),
+                        ]),
+                        ),
+                    'valid' => ifElse(
+                        compose(isEmpty(), prop('valid_id')),
+                        null,
+                        arr([
+                            'id' => prop('valid_id'),
+                            'value' => prop('valid_value'),
+                        ]),
+                        ),
+                    'nested' => arr([
+                        'first' => arr([
+                            'a' => always('foo'),
+                            'b' => always(456),
+                        ]),
+                        'second' => arr([
+                            'a' => always('bar'),
+                            'b' => always(567),
+                        ]),
+                    ]),
+                    'null' => always(null),
+                    'string' => always('foo'),
+                    'int' => always(789),
+                    'float' => always(890.12),
                 ]),
-                new IsArrayIndexNotEmpty('id'),
-            ),
-            new Put(
-                'valid',
-                new Collection([
-                    'id' => new Pick('valid_id'),
-                    'value' => new Pick('valid_value'),
+                omit([
+                    'contact_id', 'contact_name',
+                    'unloading_point_code', 'unloading_point_description',
+                    'invalid_id', 'invalid_value',
+                    'valid_id', 'valid_value',
+                    'creation_date_date', 'creation_date_time',
                 ]),
-                new IsArrayIndexNotEmpty('id'),
-            ),
-            new Put(
-                'nested.first',
-                new Collection([
-                    'a' => 'foo',
-                    'b' => 123,
-                ])
-            ),
-            new Put(
-                'nested.second',
-                new Collection([
-                    'a' => 'bar',
-                    'b' => 234,
-                ])
-            ),
-            new Put(
-                'nested.second',
-                new Collection([
-                    'c' => 'baz',
-                    'd' => 345,
-                ])
-            ),
-            new Put(
-                'creation_date',
-                new Join(
-                    ' ',
-                    [
-                        new Left(10, new Pick('creation_date_date')),
-                        new Right(12, new Pick('creation_date_time')),
-                    ]
-                )
-            ),
-            new Put('null', null),
-            new Put('string', 'foo'),
-            new Put('int', 123),
-            new Put('float', 234.56),
-            new Remove(['contact_id', 'contact_name']),
-            new Remove(['unloading_point_code', 'unloading_point_description']),
-            new Remove(['invalid_id', 'invalid_value']),
-            new Remove(['valid_id', 'valid_value']),
-            new Remove(['creation_date_date', 'creation_date_time'])
+            ]
         );
 
-        $result = $mapper($data);
+        $result = $remap($data);
 
-        $this->assertSame([
+        $this->assertEquals([
             'contact' => [
                 'id' => 123,
                 'name' => 'abc',
@@ -120,21 +115,22 @@ final class ComplexTest extends TestCase
                 'id' => 'foo',
                 'value' => '',
             ],
+            'invalid' => null,
             'nested' => [
                 'first' => [
                     'a' => 'foo',
-                    'b' => 123,
+                    'b' => 456,
                 ],
                 'second' => [
-                    'c' => 'baz',
-                    'd' => 345,
+                    'a' => 'bar',
+                    'b' => 567,
                 ],
             ],
             'creation_date' => '2019-01-01 10:11:12.000',
             'null' => null,
             'string' => 'foo',
-            'int' => 123,
-            'float' => 234.56,
+            'int' => 789,
+            'float' => 890.12,
         ], $result);
     }
 }
