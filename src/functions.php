@@ -7,6 +7,7 @@ namespace Mapper;
 use Mapper\Exception\ElementNotFound;
 use Mapper\Helper\Assert;
 use function implode;
+use function in_array;
 use function Safe\substr;
 
 function always($arg): callable {
@@ -28,6 +29,12 @@ function compose(callable ...$args): callable {
         return array_reduce(array_reverse($args), static function($carry, $arg) {
             return $arg($carry);
         }, $value);
+    };
+}
+
+function contains($args): callable {
+    return static function($value) use ($args) {
+        return in_array($value, $args, true);
     };
 }
 
